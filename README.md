@@ -14,10 +14,16 @@ Instal the required packages
 pip install -r requirements.txt
 ```
 
+Run the demo of nettack with vanilla GCN
 ```
-python demo.py --reg
+python demo.py
 ```
-with a set of parameter to specify
+run the demo of nettack with ProxGCN
+```
+python demo.py
+```
+
+`demo.py` has a set of parameter to specify
 
 ```
 --dataset:      choose from 

@@ -5,7 +5,7 @@ from sklearn.metrics import f1_score
 
 spdot = tf.sparse_tensor_dense_matmul
 dot = tf.matmul
-
+tf.set_random_seed(15)
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
@@ -120,6 +120,7 @@ class ProxGCN:
                                                                              labels=self.node_labels)
                 self.train_loss = tf.reduce_mean(self.loss_per_node)
 
+                # add a regularizer
                 if with_reg:
                     self.zeta = tf.Variable(np.random.randn(An.shape[0], sizes[0]), dtype=tf.float32, 
                                 constraint=lambda x: tf.clip_by_norm(x, FLAGS.eta, axes=1))
@@ -140,7 +141,7 @@ class ProxGCN:
                 self.train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss,
                                                                                                   var_list=var_l)
 
-                if with_reg:
+                if self.with_reg:
                     self.train_zeta = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(-self.reg, var_list=[self.zeta])
                 self.varlist = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
                 self.local_init_op = tf.variables_initializer(self.varlist)

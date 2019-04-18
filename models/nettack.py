@@ -11,7 +11,7 @@ Technical University of Munich
 
 import numpy as np
 import scipy.sparse as sp
-from nettack import utils
+from models import utils
 from numba import jit
 
 class Nettack:

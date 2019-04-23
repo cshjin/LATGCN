@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.contrib import slim
 import numpy as np
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, accuracy_score
 
 spdot = tf.sparse_tensor_dense_matmul
 dot = tf.matmul
@@ -138,11 +138,11 @@ class ProxGCN:
                 var_l = [self.W1, self.W2]
                 if with_relu:
                     var_l.extend([self.b1, self.b2])
-                self.train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.loss,
-                                                                                                  var_list=var_l)
+                self.train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+                self.train_w = self.train_op.minimize(self.loss, var_list=var_l)
 
                 if self.with_reg:
-                    self.train_zeta = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(-self.reg, var_list=[self.zeta])
+                    self.train_zeta = self.train_op.minimize(-self.reg, var_list=[self.zeta])
                 self.varlist = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
                 self.local_init_op = tf.variables_initializer(self.varlist)
 
@@ -203,7 +203,7 @@ class ProxGCN:
             self.session.run(list(self.assign_ops.values()), feed_dict = {val: var_dict[self.convert_varname(key, to_namespace)]
                                                                      for key, val in self.assign_placeholders.items()})
 
-    def train(self, split_train, split_val, Z_obs, patience=30, n_iters=200, print_info=True):
+    def train(self, split_train, split_val, Z_obs, patience=30, n_iters=200, print_info=False):
         """
         Train the GCN model on the provided data.
 
@@ -247,12 +247,13 @@ class ProxGCN:
             if self.with_reg:
                 for k in range(20):
                     self.session.run(self.train_zeta)
-            _loss, _ = self.session.run([self.loss, self.train_op], feed)
+            _loss, _ = self.session.run([self.loss, self.train_w], feed)
 
-            f1_micro, f1_macro = self.eval_class(split_val, np.argmax(Z_obs, 1))
-            perf_sum = f1_micro + f1_macro
-            if perf_sum > best_performance:
-                best_performance = perf_sum
+            # f1_micro, f1_macro = self.eval_class(split_val, np.argmax(Z_obs, 1))
+            acc_val = self.eval_class(split_val, np.argmax(Z_obs, 1))
+            # perf_sum = f1_micro + f1_macro
+            if acc_val > best_performance:
+                best_performance = acc_val
                 patience = early_stopping
                 # var dump to memory is much faster than to disk using checkpoints
                 var_dump_best = {v.name: v.eval(self.session) for v in varlist}
@@ -289,4 +290,5 @@ class ProxGCN:
         test_pred = self.predictions.eval(session=self.session, feed_dict={self.node_ids: ids_to_eval}).argmax(1)
         test_real = z_obs[ids_to_eval]
 
-        return f1_score(test_real, test_pred, average='micro'), f1_score(test_real, test_pred, average='macro')
+        # return f1_score(test_real, test_pred, average='micro'), f1_score(test_real, test_pred, average='macro')
+        return accuracy_score(test_real, test_pred)

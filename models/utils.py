@@ -181,9 +181,10 @@ def preprocess_graph(adj):
     """
     adj_ = adj + 1 * sp.eye(adj.shape[0])
     rowsum = adj_.sum(1).A1
-    degree_mat_inv_sqrt = sp.diags(np.power(rowsum, -0.5))
-    adj_normalized = adj_.dot(degree_mat_inv_sqrt).T.dot(degree_mat_inv_sqrt).tocsr()
-    return adj_normalized
+    D_inv_sqrt = sp.diags(np.power(rowsum, -0.5))
+    D_inv = sp.diags(np.power(rowsum, -1))
+    adj_normalized = D_inv_sqrt @ adj_ @ D_inv_sqrt
+    return adj_normalized.tocsr()
 
 
 def correct_predicted(y_true, y_pred):

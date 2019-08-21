@@ -18,7 +18,7 @@ Run the demo of nettack with vanilla GCN
 ```
 python demo.py
 ```
-run the demo of nettack with ProxGCN
+run the demo of nettack with LATGCN
 ```
 python demo.py
 ```
@@ -29,7 +29,7 @@ python demo.py
 --dataset:      choose from 
                 'citeseer', 'cora', 'cora_ml', 'pubmed', 'polblogs', 'dblp'
 --train_share:  specify the size for training
---reg:          a flag to toggle the ProxGCN
+--reg:          a flag to toggle the LATGCN
 --eta:          the norm constraint of noise applied to each node embedding
 --gamma:        regularizer factor
 ```

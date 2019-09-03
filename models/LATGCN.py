@@ -9,6 +9,7 @@ tf.set_random_seed(15)
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
+
 def sparse_dropout(x, keep_prob, noise_shape):
     """Dropout for sparse tensors."""
     random_tensor = keep_prob
@@ -17,7 +18,8 @@ def sparse_dropout(x, keep_prob, noise_shape):
     pre_out = tf.sparse_retain(x, dropout_mask)
     return pre_out * (1./keep_prob)
 
-class ProxGCN:
+
+class LATGCN:
     def __init__(self, sizes, An, X_obs, name="", with_relu=True, params_dict={'dropout': 0.5}, gpu_id=0,
                  seed=-1, with_reg=False):
         """
@@ -76,14 +78,17 @@ class ProxGCN:
                 self.N, self.D = X_obs.shape
 
                 self.node_ids = tf.placeholder(tf.int32, [None], 'node_ids')
-                self.node_labels = tf.placeholder(tf.int32, [None, sizes[1]], 'node_labels')
+                self.node_labels = tf.placeholder(
+                    tf.int32, [None, sizes[1]], 'node_labels')
 
                 # bool placeholder to turn on dropout during training
                 self.training = tf.placeholder_with_default(False, shape=())
 
-                self.An = tf.SparseTensor(np.array(An.nonzero()).T, An[An.nonzero()].A1, An.shape)
+                self.An = tf.SparseTensor(
+                    np.array(An.nonzero()).T, An[An.nonzero()].A1, An.shape)
                 self.An = tf.cast(self.An, tf.float32)
-                self.X_sparse = tf.SparseTensor(np.array(X_obs.nonzero()).T, X_obs[X_obs.nonzero()].A1, X_obs.shape)
+                self.X_sparse = tf.SparseTensor(
+                    np.array(X_obs.nonzero()).T, X_obs[X_obs.nonzero()].A1, X_obs.shape)
                 self.X_dropout = sparse_dropout(self.X_sparse, 1 - self.dropout,
                                                 (int(self.X_sparse.values.get_shape()[0]),))
                 # only use drop-out during training
@@ -91,8 +96,10 @@ class ProxGCN:
                                       lambda: self.X_dropout,
                                       lambda: self.X_sparse) if self.dropout > 0. else self.X_sparse
 
-                self.W1 = slim.variable('W1', [self.D, sizes[0]], tf.float32, initializer=w_init())
-                self.b1 = slim.variable('b1', dtype=tf.float32, initializer=tf.zeros(sizes[0]))
+                self.W1 = slim.variable(
+                    'W1', [self.D, sizes[0]], tf.float32, initializer=w_init())
+                self.b1 = slim.variable(
+                    'b1', dtype=tf.float32, initializer=tf.zeros(sizes[0]))
 
                 self.h1 = spdot(self.An, spdot(self.X_comp, self.W1))
 
@@ -101,13 +108,14 @@ class ProxGCN:
 
                 self.h1_dropout = tf.nn.dropout(self.h1, 1 - self.dropout)
 
-
                 self.h1_comp = tf.cond(self.training,
                                        lambda: self.h1_dropout,
                                        lambda: self.h1) if self.dropout > 0. else self.h1
 
-                self.W2 = slim.variable('W2', [sizes[0], sizes[1]], tf.float32, initializer=w_init())
-                self.b2 = slim.variable('b2', dtype=tf.float32, initializer=tf.zeros(sizes[1]))
+                self.W2 = slim.variable(
+                    'W2', [sizes[0], sizes[1]], tf.float32, initializer=w_init())
+                self.b2 = slim.variable(
+                    'b2', dtype=tf.float32, initializer=tf.zeros(sizes[1]))
 
                 self.logits = spdot(self.An, dot(self.h1_comp, self.W2))
                 if with_relu:
@@ -117,13 +125,13 @@ class ProxGCN:
                 self.predictions = tf.nn.softmax(self.logits_gather)
 
                 self.loss_per_node = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.logits_gather,
-                                                                             labels=self.node_labels)
+                                                                                labels=self.node_labels)
                 self.train_loss = tf.reduce_mean(self.loss_per_node)
 
                 # add a regularizer
                 if with_reg:
-                    self.zeta = tf.Variable(np.random.randn(An.shape[0], sizes[0]), dtype=tf.float32, 
-                                constraint=lambda x: tf.clip_by_norm(x, FLAGS.eta, axes=1))
+                    self.zeta = tf.Variable(np.random.randn(An.shape[0], sizes[0]), dtype=tf.float32,
+                                            constraint=lambda x: tf.clip_by_norm(x, FLAGS.eta, axes=1))
                     h1p = self.h1 + self.zeta
                     h2p = spdot(self.An, dot(h1p, self.W2))
                     self.reg = tf.linalg.norm(h2p - self.logits)
@@ -131,19 +139,25 @@ class ProxGCN:
                     self.loss = self.train_loss + self.reg * FLAGS.gamma
                 # weight decay only on the first layer, to match the original implementation
                 if with_relu:
-                    self.loss = self.train_loss + self.weight_decay * tf.add_n([tf.nn.l2_loss(v) for v in [self.W1, self.b1]])
+                    self.loss = self.train_loss + self.weight_decay * \
+                        tf.add_n([tf.nn.l2_loss(v)
+                                  for v in [self.W1, self.b1]])
                 else:
                     self.loss = self.train_loss
 
                 var_l = [self.W1, self.W2]
                 if with_relu:
                     var_l.extend([self.b1, self.b2])
-                self.train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
-                self.train_w = self.train_op.minimize(self.loss, var_list=var_l)
+                self.train_op = tf.train.AdamOptimizer(
+                    learning_rate=self.learning_rate)
+                self.train_w = self.train_op.minimize(
+                    self.loss, var_list=var_l)
 
                 if self.with_reg:
-                    self.train_zeta = self.train_op.minimize(-self.reg, var_list=[self.zeta])
-                self.varlist = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
+                    self.train_zeta = self.train_op.minimize(
+                        -self.reg, var_list=[self.zeta])
+                self.varlist = tf.get_collection(
+                    tf.GraphKeys.GLOBAL_VARIABLES, scope=self.name)
                 self.local_init_op = tf.variables_initializer(self.varlist)
 
                 if gpu_id is None:
@@ -151,7 +165,8 @@ class ProxGCN:
                         device_count={'GPU': 0}
                     )
                 else:
-                    gpu_options = tf.GPUOptions(visible_device_list='{}'.format(gpu_id), allow_growth=True)
+                    gpu_options = tf.GPUOptions(
+                        visible_device_list='{}'.format(gpu_id), allow_growth=True)
                     config = tf.ConfigProto(gpu_options=gpu_options)
 
                 self.session = tf.InteractiveSession(config=config)
@@ -196,12 +211,13 @@ class ProxGCN:
 
         with self.graph.as_default():
             if not hasattr(self, 'assign_placeholders'):
-                self.assign_placeholders = {v.name: tf.placeholder(v.dtype, shape=v.get_shape()) for v in self.varlist}
+                self.assign_placeholders = {v.name: tf.placeholder(
+                    v.dtype, shape=v.get_shape()) for v in self.varlist}
                 self.assign_ops = {v.name: tf.assign(v, self.assign_placeholders[v.name])
                                    for v in self.varlist}
             to_namespace = list(var_dict.keys())[0].split("/")[0]
-            self.session.run(list(self.assign_ops.values()), feed_dict = {val: var_dict[self.convert_varname(key, to_namespace)]
-                                                                     for key, val in self.assign_placeholders.items()})
+            self.session.run(list(self.assign_ops.values()), feed_dict={val: var_dict[self.convert_varname(key, to_namespace)]
+                                                                        for key, val in self.assign_placeholders.items()})
 
     def train(self, split_train, split_val, Z_obs, patience=30, n_iters=200, print_info=False):
         """
@@ -266,7 +282,6 @@ class ProxGCN:
         # Put the best observed parameters back into the model
         self.set_variables(var_dump_best)
 
-
     def eval_class(self, ids_to_eval, z_obs):
         """
         Evaluate the model's classification performance.
@@ -287,7 +302,8 @@ class ProxGCN:
         [f1_micro, f1_macro] scores
 
         """
-        test_pred = self.predictions.eval(session=self.session, feed_dict={self.node_ids: ids_to_eval}).argmax(1)
+        test_pred = self.predictions.eval(session=self.session, feed_dict={
+                                          self.node_ids: ids_to_eval}).argmax(1)
         test_real = z_obs[ids_to_eval]
 
         # return f1_score(test_real, test_pred, average='micro'), f1_score(test_real, test_pred, average='macro')

@@ -6,6 +6,7 @@ from scipy.sparse.csgraph import connected_components
 from sklearn.metrics import accuracy_score
 import networkx as nx
 
+
 def xavier_init(size):
     """ The initiation from the Xavier's paper
         ref: Understanding the difficulty of training deep feedforward neural 
@@ -28,7 +29,7 @@ def xavier_init(size):
 
 def sparse_dropout(x, keep_prob, noise_shape):
     """ Dropout for sparse tensors
-    
+
     Parameters
     ----------
     x: the tensor
@@ -66,12 +67,13 @@ def load_npz(file_name):
     with np.load(file_name) as loader:
         loader = dict(loader)
         adj_matrix = sp.csr_matrix(
-            (loader['adj_data'], loader['adj_indices'], loader['adj_indptr']), 
+            (loader['adj_data'], loader['adj_indices'], loader['adj_indptr']),
             shape=loader['adj_shape'])
 
         if 'attr_data' in loader:
             attr_matrix = sp.csr_matrix(
-                (loader['attr_data'], loader['attr_indices'], loader['attr_indptr']), 
+                (loader['attr_data'], loader['attr_indices'],
+                 loader['attr_indptr']),
                 shape=loader['attr_shape'])
         else:
             # REVIEW: change to identy matrix
@@ -100,7 +102,8 @@ def largest_connected_components(adj, n_components=1):
     """
     _, component_indices = connected_components(adj)
     component_sizes = np.bincount(component_indices)
-    components_to_keep = np.argsort(component_sizes)[::-1][:n_components]  # reverse order to sort descending
+    # reverse order to sort descending
+    components_to_keep = np.argsort(component_sizes)[::-1][:n_components]
     nodes_to_keep = [
         idx for (idx, component) in enumerate(component_indices) if component in components_to_keep
 
@@ -111,7 +114,6 @@ def largest_connected_components(adj, n_components=1):
 
 
 def train_val_test_split_tabular(*arrays, train_size=0.5, val_size=0.3, test_size=0.2, stratify=None, random_state=None):
-
     """
     Split the arrays or matrices into random train, validation and test subsets.
 
@@ -136,7 +138,7 @@ def train_val_test_split_tabular(*arrays, train_size=0.5, val_size=0.3, test_siz
         List containing train-validation-test split of inputs.
 
     """
-    # DEBUG: fix the error when sum(train_size + test_size) != samples 
+    # DEBUG: fix the error when sum(train_size + test_size) != samples
     if len(set(array.shape[0] for array in arrays)) != 1:
         raise ValueError("Arrays must have equal first dimension.")
     idx = np.arange(arrays[0].shape[0])
@@ -149,7 +151,7 @@ def train_val_test_split_tabular(*arrays, train_size=0.5, val_size=0.3, test_siz
         train_size=train_size + val_size,
         test_size=test_size,
         stratify=stratify)
-    
+
     if stratify is not None:
         stratify = stratify[idx_train_and_val]
         idx_train, idx_val = train_test_split(
@@ -165,6 +167,7 @@ def train_val_test_split_tabular(*arrays, train_size=0.5, val_size=0.3, test_siz
         result.append(X[idx_val])
         result.append(X[idx_test])
     return result
+
 
 def preprocess_graph(adj):
     """ Return the normalized laplacian matrix 
@@ -213,7 +216,6 @@ def correct_predicted(y_true, y_pred):
     return correct_predicted_idx, correct_score
 
 
-
 def compute_margin_score(y_true, y_pred_prob, N=2):
     """ Implementation of the margin score
         Def: X = Z_{v, c_{old}} - \max_{c \neq c_{old}} Z_{v, c}
@@ -243,15 +245,18 @@ def compute_margin_score(y_true, y_pred_prob, N=2):
             _score = y_pred_prob[i][y_true[i]] - sorted(y_pred_prob[i])[-2]
         else:
             # _score is negative, incorrectly predicted
-            _score = y_pred_prob[i][y_true[i]] - y_pred_prob[i][predict_labels[i]]
+            _score = y_pred_prob[i][y_true[i]] - \
+                y_pred_prob[i][predict_labels[i]]
         margin_score.append(_score)
-    
+
     # pick the nodes based on the top N margin scores
     margin_score = np.array(margin_score)
     margin_score_nonneg = margin_score.copy()
-    margin_score_nonneg[margin_score_nonneg<0] = 0
-    topN = sorted(range(len(margin_score_nonneg)), key=lambda i: margin_score_nonneg[i], reverse=True)[:N]
-    lastN = sorted(range(len(margin_score_nonneg)), key=lambda i: margin_score_nonneg[i] if margin_score_nonneg[i] > 0 else 100)[:N]
+    margin_score_nonneg[margin_score_nonneg < 0] = 0
+    topN = sorted(range(len(margin_score_nonneg)),
+                  key=lambda i: margin_score_nonneg[i], reverse=True)[:N]
+    lastN = sorted(range(len(margin_score_nonneg)),
+                   key=lambda i: margin_score_nonneg[i] if margin_score_nonneg[i] > 0 else 100)[:N]
     picked_nodes = topN + lastN
 
     return margin_score, picked_nodes
@@ -282,11 +287,13 @@ def compute_margin_score_v2(y_true, y_pred_prob, y_correct_idx, N=2):
     for i in y_correct_idx:
         _score = y_pred_prob[i][y_true[i]] - sorted(y_pred_prob[i])[-2]
         margin_score.append(_score)
-    
+
     # pick the nodes based on the top N margin scores
     margin_score = np.array(margin_score)
-    topN = sorted(range(len(margin_score)), key=lambda i: margin_score[i], reverse=True)[:N]
-    lastN = sorted(range(len(margin_score)), key=lambda i: margin_score[i] if margin_score[i] > 0 else 100)[:N]
+    topN = sorted(range(len(margin_score)),
+                  key=lambda i: margin_score[i], reverse=True)[:N]
+    lastN = sorted(range(len(margin_score)),
+                   key=lambda i: margin_score[i] if margin_score[i] > 0 else 100)[:N]
     # lastN = sorted(range(len(margin_score)), key=lambda i: margin_score[i])[:N]
     picked_nodes = topN + lastN
     picked_nodes = list(set(picked_nodes))
@@ -316,13 +323,15 @@ def compute_margin_score_v3(y_true, y_pred_prob, y_correct_idx, node_correct_idx
     margin_score = {}
     predict_labels = y_pred_prob.argmax(axis=1)
     for node_idx, pred_idx in zip(node_correct_idx, y_correct_idx):
-        _score = y_pred_prob[pred_idx][y_true[pred_idx]] - sorted(y_pred_prob[pred_idx])[-2]
+        _score = y_pred_prob[pred_idx][y_true[pred_idx]] - \
+            sorted(y_pred_prob[pred_idx])[-2]
         if _score >= 0:
             margin_score[node_idx] = _score
 
     # pick the nodes based on the top N margin scores
     size = min(N, len(margin_score))
-    picked_nodes = sorted(margin_score, key=margin_score.get, reverse=True)[:size]
+    picked_nodes = sorted(
+        margin_score, key=margin_score.get, reverse=True)[:size]
     return margin_score, picked_nodes
 
 
@@ -343,6 +352,7 @@ def normalized_laplacian_spectrum(G):
     """
     from scipy.linalg import eigvalsh
     return eigvalsh(nx.normalized_laplacian_matrix(G).todense())
+
 
 def sp_matrix_to_sp_tensor(M):
     """ Convert a sparse matrix to a SparseTensor
@@ -390,7 +400,8 @@ def mask_test_edges(adj):
     # TODO: Clean up.
 
     # Remove diagonal elements
-    adj = adj - sp.dia_matrix((adj.diagonal()[np.newaxis, :], [0]), shape=adj.shape)
+    adj = adj - \
+        sp.dia_matrix((adj.diagonal()[np.newaxis, :], [0]), shape=adj.shape)
     adj.eliminate_zeros()
     # Check that diag is zero:
     assert np.diag(adj.todense()).sum() == 0
@@ -408,7 +419,8 @@ def mask_test_edges(adj):
     test_edge_idx = all_edge_idx[num_val:(num_val + num_test)]
     test_edges = edges[test_edge_idx]
     val_edges = edges[val_edge_idx]
-    train_edges = np.delete(edges, np.hstack([test_edge_idx, val_edge_idx]), axis=0)
+    train_edges = np.delete(edges, np.hstack(
+        [test_edge_idx, val_edge_idx]), axis=0)
 
     def ismember(a, b, tol=5):
         rows_close = np.all(np.round(a - b[:, None], tol) == 0, axis=-1)
@@ -459,7 +471,8 @@ def mask_test_edges(adj):
     data = np.ones(train_edges.shape[0])
 
     # Re-build adj matrix
-    adj_train = sp.csr_matrix((data, (train_edges[:, 0], train_edges[:, 1])), shape=adj.shape)
+    adj_train = sp.csr_matrix(
+        (data, (train_edges[:, 0], train_edges[:, 1])), shape=adj.shape)
     adj_train = adj_train + adj_train.T
 
     # NOTE: these edge lists only contain single direction of edge!

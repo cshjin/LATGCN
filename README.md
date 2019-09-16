@@ -1,4 +1,5 @@
 # LATGCN
+This is the implementation of Latent Adversarial Training of Graph Convolutional Networks [LATGCN](https://graphreason.github.io/papers/35.pdf) by Hongwei Jin and Xinhua Zhang. 
 
 ## Motivation
 
@@ -53,6 +54,15 @@ The original GCN model is implemented by [Thomas N Kipf](https://github.com/tkip
 
 Feel free to create issue in the repo, I will try to answer as soon as I can.
 
+## Citation
+```
+@article{jin2019latent,
+  title={Latent Adversarial Training of Graph Convolutional Networks},
+  author={Jin, Hongwei and Zhang, Xinhua},
+  journal={ICML workshop - Learning and Reasoning with Graph-Structured Representations},
+  year={2019}
+}
+```
 ## Copyright
 
 The work is under [MIT license](./LICENSE).

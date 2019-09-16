@@ -77,7 +77,7 @@ def run_model(model, A, X, u, with_reg=FLAGS.reg):
 # @profile
 def create_model():
 
-    surrogate_model = ProxGCN.ProxGCN(sizes, _An, _X_obs, with_relu=False, name="surrogate", gpu_id=gpu_id)
+    surrogate_model = LATGCN.LATGCN(sizes, _An, _X_obs, with_relu=False, name="surrogate", gpu_id=gpu_id)
     surrogate_model.train(split_train, split_val, _Z_obs, print_info=False)
     W1 =surrogate_model.W1.eval(session=surrogate_model.session)
     W2 =surrogate_model.W2.eval(session=surrogate_model.session)
@@ -95,7 +95,7 @@ def create_model():
     ### pick the poisoning or evasion, take 100 nodes from test set
     split_to_attack = np.random.choice(split_unlabeled, 100)
 
-    for u in tqdm(split_to_attack[:1], desc='attack'):
+    for u in tqdm(split_to_attack[:], desc='attack'):
         counter += 1
         nettack = ntk.Nettack(_A_obs, _X_obs, _z_obs, W1, W2, u, verbose=False)
 
@@ -115,7 +115,7 @@ def create_model():
                     direct=direct_attack, 
                     n_influencers=n_influencers)
 
-        gcn_before = ProxGCN.ProxGCN(sizes, _An, _X_obs, "gcn_orig", gpu_id=gpu_id)
+        gcn_before = LATGCN.LATGCN(sizes, _An, _X_obs, "gcn_orig", gpu_id=gpu_id)
         # ### Train GCN without perturbations
         gcn_before.train(split_train, split_val, _Z_obs, print_info=False)
 
@@ -137,7 +137,7 @@ def create_model():
 
 
         # ### Train GCN with perturbations
-        gcn_after = ProxGCN.ProxGCN(sizes, nettack.adj_preprocessed, nettack.X_obs.tocsr(), "gcn_after", gpu_id=gpu_id, with_reg=FLAGS.reg)
+        gcn_after = LATGCN.LATGCN(sizes, nettack.adj_preprocessed, nettack.X_obs.tocsr(), "gcn_after", gpu_id=gpu_id, with_reg=FLAGS.reg)
         gcn_after.train(split_train, split_val, _Z_obs, print_info=False)
         probs_after_attack = gcn_after.predictions.eval(session=gcn_after.session,feed_dict={gcn_after.node_ids: [nettack.u]})[0]
         preds_test_after = gcn_after.predictions.eval(session=gcn_after.session,

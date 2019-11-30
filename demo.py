@@ -7,7 +7,8 @@ import tensorflow as tf
 from tqdm import tqdm
 import scipy.sparse as sp
 from sklearn.metrics import *
-
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 # set this to your desired GPU ID if you want to use GPU computations (only for the GCN/surrogate training)
 gpu_id = None 
 
@@ -103,7 +104,7 @@ def create_model():
         direct_attack = True
         n_influencers = 1 if direct_attack else 5
         # How many perturbations to perform. Default: Degree of the node
-        n_perturbations = 5
+        n_perturbations = 1
         perturb_features = False
         perturb_structure = True
 

@@ -13,6 +13,11 @@ import numpy as np
 import scipy.sparse as sp
 from models import utils
 from numba import jit
+from numba.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning
+import warnings
+
+warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
+warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
 
 
 class Nettack:
@@ -41,7 +46,7 @@ class Nettack:
         # Node labels
         self.z_obs = z_obs.copy()
         self.label_u = self.z_obs[self.u]
-        self.K = np.max(self.z_obs)+1
+        self.K = np.max(self.z_obs) + 1
         # GCN weight matrices
         self.W1 = W1
         self.W2 = W2
@@ -143,7 +148,7 @@ class Nettack:
         """
 
         label_u_onehot = np.eye(self.K)[self.label_u]
-        return (logits - 1000*label_u_onehot).argmax()
+        return (logits - 1000 * label_u_onehot).argmax()
 
     def feature_scores(self):
         """
@@ -233,7 +238,7 @@ class Nettack:
 
         """
 
-        assert n < self.N-1, "number of influencers cannot be >= number of nodes in the graph!"
+        assert n < self.N - 1, "number of influencers cannot be >= number of nodes in the graph!"
 
         neighbors = self.adj_no_selfloops[self.u].nonzero()[1]
         assert self.u not in neighbors
@@ -262,7 +267,7 @@ class Nettack:
                 # that are already connected to u.
                 poss_add_infl = np.setdiff1d(np.arange(self.N), neighbors)
                 n_possible_additional = len(poss_add_infl)
-                n_additional_attackers = n-len(neighbors)
+                n_additional_attackers = n - len(neighbors)
                 possible_edges = np.column_stack(
                     (np.tile(self.u, n_possible_additional), poss_add_infl))
 
@@ -342,15 +347,13 @@ class Nettack:
 
         """
 
-        assert not (direct == False and n_influencers ==
-                    0), "indirect mode requires at least one influencer node"
+        assert not (direct is False and n_influencers == 0), "indirect mode requires at least one influencer node"
         assert n_perturbations > 0, "need at least one perturbation"
         assert perturb_features or perturb_structure, "either perturb_features or perturb_structure must be true"
 
         logits_start = self.compute_logits()
         best_wrong_class = self.strongest_wrong_class(logits_start)
-        surrogate_losses = [logits_start[self.label_u] -
-                            logits_start[best_wrong_class]]
+        surrogate_losses = [logits_start[self.label_u] - logits_start[best_wrong_class]]
 
         if self.verbose:
             print("##### Starting attack #####")
@@ -403,13 +406,13 @@ class Nettack:
                 # direct attack
                 influencers = [self.u]
                 self.potential_edges = np.column_stack(
-                    (np.tile(self.u, self.N-1), np.setdiff1d(np.arange(self.N), self.u)))
+                    (np.tile(self.u, self.N - 1), np.setdiff1d(np.arange(self.N), self.u)))
                 self.influencer_nodes = np.array(influencers)
         self.potential_edges = self.potential_edges.astype("int32")
         for _ in range(n_perturbations):
             if self.verbose:
                 print(
-                    "##### ...{}/{} perturbations ... #####".format(_+1, n_perturbations))
+                    "##### ...{}/{} perturbations ... #####".format(_ + 1, n_perturbations))
             if perturb_structure:
 
                 # Do not consider edges that, if removed, result in singleton edges in the graph.
@@ -606,10 +609,8 @@ def compute_new_a_hat_uv(edge_ixs, node_nb_ixs, edges_set, twohop_ixs, values_be
             sum_term1 = np.sqrt(degs[u] * degs[v]) * values_before[v] - a_uv_before_sl / degs[u] - a_uv_before / \
                 degs[v]
             sum_term2 = a_uv_after / degs_new[v] + a_uv_after_sl / degs_new[u]
-            sum_term3 = -((a_um and a_vm_before) /
-                          degs[edge[0]]) + (a_um_after and a_vm_after) / degs_new[edge[0]]
-            sum_term4 = -((a_un and a_vn_before) /
-                          degs[edge[1]]) + (a_un_after and a_vn_after) / degs_new[edge[1]]
+            sum_term3 = -((a_um and a_vm_before) / degs[edge[0]]) + (a_um_after and a_vm_after) / degs_new[edge[0]]
+            sum_term4 = -((a_un and a_vn_before) / degs[edge[1]]) + (a_un_after and a_vn_after) / degs_new[edge[1]]
             new_val = mult_term * \
                 (sum_term1 + sum_term2 + sum_term3 + sum_term4)
 
@@ -734,7 +735,7 @@ def filter_singletons(edges, adj):
     existing_edges = np.squeeze(np.array(adj.tocsr()[tuple(edges.T)]))
     if existing_edges.size > 0:
         edge_degrees = degs[np.array(edges)] + 2 * \
-            (1-existing_edges[:, None]) - 1
+            (1 - existing_edges[:, None]) - 1
     else:
         edge_degrees = degs[np.array(edges)] + 1
 
